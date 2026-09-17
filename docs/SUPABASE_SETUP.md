@@ -58,28 +58,46 @@ be worth having: three or four unrelated words beats a short cryptic string.
 
 ## 4. Deploy the login function
 
-The function trades a passcode for a signed JWT carrying `app_role`. It needs the
-project's JWT secret.
+The function trades a passcode for a signed JWT carrying `app_role`. It has no
+imports — nothing to install, nothing to pin — so the browser editor is the easiest
+route and no CLI is required.
+
+**In the dashboard:** Edge Functions → **Deploy a new function** → name it exactly
+`login`. Replace the sample code with the contents of
+[`supabase/functions/login/index.ts`](../supabase/functions/login/index.ts) and deploy.
+
+Then turn off JWT verification for this one function: Edge Functions → `login` →
+Settings → **Enforce JWT verification: off**. That is correct here — this is the
+endpoint people call *before* they have a token, and everything it can do is bounded
+by the checks inside it.
+
+Now add the secret it needs: Edge Functions → **Secrets** (or Project Settings →
+Edge Functions → Secrets):
+
+| Name | Value |
+|---|---|
+| `JWT_SECRET` | Project Settings → API → JWT Settings → **JWT Secret** (the legacy HS256 one) |
+| `ALLOWED_ORIGIN` | Your site's origin, e.g. `https://you.github.io` — scheme and host only, no path, no trailing slash. Optional; defaults to `*`. |
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the platform — do not
+set them yourself, and never copy the service_role key anywhere else.
+
+> If Project Settings → API shows only asymmetric **JWT signing keys** (ECC/RSA) and
+> no legacy HS256 secret, stop here and say so — the token has to be signed with
+> whatever your project verifies, and the function would need a different algorithm.
+
+**With the CLI instead**, if you prefer:
 
 ```bash
-npm install -g supabase            # or: brew install supabase/tap/supabase
+npm install -g supabase
 supabase login
 supabase link --project-ref <your-project-ref>
-
-# Settings → API → JWT Settings → JWT Secret
 supabase secrets set JWT_SECRET='<the project JWT secret>'
-
-# Optional but worth setting once the site URL is settled; defaults to '*'.
 supabase secrets set ALLOWED_ORIGIN='https://<you>.github.io'
-
 supabase functions deploy login --no-verify-jwt
 ```
 
-`--no-verify-jwt` is correct here: this is the endpoint people call *before* they
-have a token. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the
-platform, so you do not set them yourself.
-
-Check it:
+Either way, check it:
 
 ```bash
 curl -s -X POST "https://<ref>.supabase.co/functions/v1/login" \
@@ -87,6 +105,8 @@ curl -s -X POST "https://<ref>.supabase.co/functions/v1/login" \
   -d '{"passcode":"your-viewer-passcode"}'
 # => {"token":"eyJ...","role":"viewer"}
 ```
+
+A wrong passcode should give `{"error":"Invalid passcode."}` and a 401.
 
 ## 5. Point the app at it
 
