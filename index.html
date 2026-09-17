@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>The Chromies Scorebook</title>
+<link rel="icon" href="./chromies-only-inline.svg">
+<link rel="preload" href="./fonts/IBMPlexSans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/IBMPlexMono-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./fonts.css">
+<style>
+body{margin:0;background:#161616;color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#111}a:hover{color:#6B4A00}
+button,input,select{font-family:inherit;-webkit-tap-highlight-color:transparent;color:var(--ink)}
+select option{color:var(--ink);background:var(--card)}
+:root{--bg:#F4F4F4;--card:#FFFFFF;--card2:#F7F7F7;--ink:#111111;--muted:#555555;--muted2:#777777;--muted3:#999999;--line:#E6E6E6;--line-strong:#111111;color-scheme:light}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #FFC400;outline-offset:2px}
+input::placeholder{color:var(--muted3)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
