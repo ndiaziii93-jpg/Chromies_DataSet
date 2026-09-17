@@ -2,7 +2,10 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # Both spellings: GitHub branch names are case-sensitive, and this repo's
+    # default branch is `Main`. Listed together so a later rename to the
+    # conventional lowercase `main` needs no change here.
+    branches: [main, Main]
   workflow_dispatch:
 
 permissions:
