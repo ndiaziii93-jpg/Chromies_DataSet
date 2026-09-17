@@ -115,10 +115,12 @@ Checked against `docs/screenshots/` at desktop width, in both themes.
 - **The live line score has no per-cell highlight.** `lineScore()` returns a `cur`
   flag per cell and the prototype binds `color:{{ c.fg }}`, but nothing ever sets
   `fg` — so the cells render plain white, which is what the screenshots show.
-- **Numbers differ from the screenshots.** The reference captures were taken against
-  the designer's real 19-player roster; a fresh install seeds the built-in 12-player
-  demo roster. The sample season is deterministic (seeded, and independent of the
-  date), so the same roster always produces the same games.
+- **Numbers differ from the screenshots.** A fresh install seeds the real 19-player
+  roster but no games, so every stat reads as empty until a game is scored.
+  **Manage → Data → Load sample season** fills it with demo games to see the app
+  populated; they are marked `sample` and **Remove sample games** takes them out
+  without touching real ones. The generator is deterministic (seeded, and independent
+  of the date), so the same roster always produces the same games.
 - The clock is the "remaining" variant, keypad keys are 56px and outcome labels are
   on — the prototype's defaults. Those were design-component knobs with no UI in the
   screenshots, so they are not exposed as settings.
