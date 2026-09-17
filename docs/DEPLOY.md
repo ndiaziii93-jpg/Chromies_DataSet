@@ -5,6 +5,20 @@ with no time limit at this scale.
 
 ## GitHub Pages (what this repo is set up for)
 
+**The repository has to be public.** GitHub Pages is free only for public repos;
+on a private one it asks you to upgrade. That is why this repo is public.
+
+Public means the *source code* is readable by anyone — it does not mean the app is
+unprotected, and it does not change who can reach the site. A deployed Pages site is
+publicly reachable either way. What guards the scorebook is the passcode gate and the
+row level security behind it: without a passcode the app shows a sign-in screen and
+the database returns nothing. There are no secrets in the code (`.env` is gitignored,
+and the Supabase anon key is designed to ship to browsers and grants nothing on its
+own).
+
+The one rule that follows from being public: **never commit a real passcode.** Set
+them in the Supabase SQL editor, as `supabase/migrations/0001_init.sql` explains.
+
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
 2. If you are using Supabase, add two repository *variables* under
    **Settings → Secrets and variables → Actions → Variables**:

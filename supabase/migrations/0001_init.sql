@@ -167,8 +167,14 @@ grant execute on function verify_passcode(text) to service_role;
 -- ---------------------------------------------------------------------------
 -- Set the three passcodes
 -- ---------------------------------------------------------------------------
--- Replace the three strings, run it once, then keep the manager and scorer
--- passcodes off any shared channel. Re-run to rotate them.
+-- Run this in the Supabase SQL editor, NOT here.
+--
+-- This repository is public, so anything committed to it is world-readable.
+-- Paste the block below into the SQL editor, fill in the three passcodes there,
+-- and run it. Never save your real passcodes back into this file. (Only the
+-- bcrypt hashes are stored, and they never leave the database.)
+--
+-- Re-run the same block any time to rotate a passcode.
 --
 -- insert into team_auth (id, manager_hash, scorer_hash, viewer_hash)
 -- values (

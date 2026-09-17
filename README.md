@@ -88,6 +88,12 @@ localStorage budget.
 
 ## Deploying
 
+**This repository is public because GitHub Pages is free only for public repos.** The
+source is readable; the scorebook is not. Anyone reaching the URL gets the passcode
+screen, and the database returns no rows without a role token. `.env` is gitignored,
+and the Supabase anon key is public by design and useless on its own. Never commit a
+real passcode — set those in the Supabase SQL editor.
+
 `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push to
 `main`. Enable **Settings → Pages → Source: GitHub Actions** once, and set the two
 repository *variables* (not secrets — both values are public by design) if you are
