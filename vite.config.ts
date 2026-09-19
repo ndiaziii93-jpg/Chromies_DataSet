@@ -14,9 +14,20 @@ export default defineConfig({
     // precaches the shell and the fonts so the app opens offline; the scorebook
     // itself already lives in localStorage, and queued writes flush on reconnect.
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' rather than 'autoUpdate': the app registers the worker itself
+      // (src/state/updates.ts) so it can hold a reload back while a game is being
+      // scored, instead of pulling the page out from under the scorer.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['chromies-only-inline.svg', 'chromies-wordmark.svg', 'fonts.css'],
       workbox: {
+        // Take control of the page on the first load, so a later deploy has a
+        // controlled client to wait behind — that waiting worker is what tells
+        // the app an update exists. Without it the new worker activates straight
+        // away and nothing is ever signalled.
+        clientsClaim: true,
+        // But never swap under a running page on its own: updates.ts decides when.
+        skipWaiting: false,
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         navigateFallback: base + 'index.html',
         cleanupOutdatedCaches: true,

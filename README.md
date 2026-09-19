@@ -81,6 +81,13 @@ Scoring happens at a field that often has no signal, so the app is built local-f
 The fonts are self-hosted in `public/fonts/` rather than loaded from Google Fonts, so
 first load at the field doesn't depend on a third-party CDN.
 
+The app keeps itself current. A service worker that serves the cached copy would
+otherwise leave people on a stale build until every tab was closed, so it checks for
+a new version on an interval and whenever the app returns to the foreground. With
+nothing in progress it reloads onto it silently; while a game is being scored it
+holds back and offers a tap-to-reload pill instead, because a reload mid-inning
+would take the undo stack with it.
+
 The undo stack is per-session: it covers the whole game while the tab is open, but a
 reload clears it. It is deliberately not persisted — each snapshot holds a full copy
 of the game, and a long game's stack would crowd the scorebook out of a 5 MB

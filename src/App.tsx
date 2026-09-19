@@ -1,6 +1,7 @@
 import * as S from './engine/stats.js';
 import { css } from './lib/css';
 import { BottomNav, TopBar } from './components/Chrome';
+import { UpdateNotice } from './components/UpdateNotice';
 import { Today } from './screens/Today';
 import { Live } from './screens/Live';
 import { Games } from './screens/Games';
@@ -53,6 +54,7 @@ export function App() {
         {nav.tab === 'manage' && seesManageTab(role) && <Manage />}
       </div>
 
+      <UpdateNotice />
       <BottomNav />
     </div>
   );

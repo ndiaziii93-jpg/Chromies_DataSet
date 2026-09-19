@@ -5,6 +5,7 @@ import { SignIn } from './screens/SignIn';
 import { NavProvider } from './state/nav';
 import { ScorebookProvider, useSession } from './state/store';
 import { isConfigured } from './state/supabase';
+import { initUpdates } from './state/updates';
 
 function Root() {
   const { session, signIn, clear } = useSession();
@@ -21,6 +22,8 @@ function Root() {
     </ScorebookProvider>
   );
 }
+
+initUpdates();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
