@@ -121,6 +121,11 @@ Checked against `docs/screenshots/` at desktop width, in both themes.
   populated; they are marked `sample` and **Remove sample games** takes them out
   without touching real ones. The generator is deterministic (seeded, and independent
   of the date), so the same roster always produces the same games.
+- **The binder tabs read top-to-bottom, unlike the prototype.** It wrote them with
+  `writing-mode:vertical-rl` plus `transform:rotate(180deg)`, which runs the label
+  bottom-to-top and is awkward to read. The rotation is gone; because it had also
+  been mirroring the border and the corner rounding, the amber spine and the radius
+  are specified on the outer edge here so the tab still looks the way it did.
 - The clock is the "remaining" variant, keypad keys are 56px and outcome labels are
   on — the prototype's defaults. Those were design-component knobs with no UI in the
   screenshots, so they are not exposed as settings.

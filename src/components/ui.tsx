@@ -82,12 +82,17 @@ export function BinderTabs({
             title={t.title}
             aria-pressed={on}
             style={cssx(
-              "writing-mode:vertical-rl;transform:rotate(180deg);border:1.5px solid var(--line-strong);border-left:0;border-radius:0 8px 8px 0;margin-right:-1.5px;font-family:'Permanent Marker',cursive;font-weight:400;letter-spacing:.04em;white-space:nowrap",
+              // The prototype wrote these vertically with `rotate(180deg)`, which
+              // reads bottom-to-top. Dropping the rotation turns the labels the
+              // legible way up, but the rotation was also mirroring the border and
+              // the corners, so the spine and the rounding move to the outer edge
+              // here to keep the tab looking the way it did.
+              "writing-mode:vertical-rl;border:1.5px solid var(--line-strong);border-right:0;border-radius:8px 0 0 8px;margin-right:-1.5px;font-family:'Permanent Marker',cursive;font-weight:400;letter-spacing:.04em;white-space:nowrap",
               {
                 minHeight: minHeight + 'px',
                 padding,
                 fontSize: fontSize + 'px',
-                borderRight: `3px solid ${on ? '#FFC400' : 'var(--line)'}`,
+                borderLeft: `3px solid ${on ? '#FFC400' : 'var(--line)'}`,
                 background: on ? '#111' : 'var(--card)',
                 color: on ? '#FFC400' : 'var(--ink)',
               },
