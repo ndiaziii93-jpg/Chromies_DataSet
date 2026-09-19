@@ -91,7 +91,11 @@ export function BottomNav() {
   return (
     <div
       style={cssx('position:sticky;bottom:0;background:#111;padding:8px 8px 14px;z-index:5;display:grid', {
-        gridTemplateColumns: `repeat(${tabs.length},1fr)`,
+        // minmax(0,1fr), not 1fr: a grid column defaults to min-width:auto and so
+        // refuses to shrink below its label. Six marker-font tabs then demand about
+        // 424px, more than a phone has, and the browser zooms the whole page out to
+        // fit — shrinking every control in the app, not just this bar.
+        gridTemplateColumns: `repeat(${tabs.length},minmax(0,1fr))`,
       })}
     >
       {tabs.map((t) => {
@@ -103,7 +107,9 @@ export function BottomNav() {
             onClick={() => nav.go(t.key)}
             aria-current={on ? 'page' : undefined}
             style={cssx(
-              "min-height:48px;border:0;background:transparent;font:400 15px 'Permanent Marker',cursive;letter-spacing:.04em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px",
+              // Design size on anything roomy, stepped down only where six tabs
+              // genuinely will not fit across a narrow phone.
+              "min-height:48px;border:0;background:transparent;font:400 clamp(10px,3vw,15px) 'Permanent Marker',cursive;letter-spacing:.04em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap",
               { color: on ? '#fff' : '#888' },
             )}
           >

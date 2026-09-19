@@ -109,6 +109,17 @@ using Supabase. Full walkthrough, including Cloudflare Pages: [docs/DEPLOY.md](d
 The Vite `base` defaults to `/Chromies_DataSet/` for Pages. Build with `BASE_PATH=/`
 for a root-served host or a custom domain.
 
+## On a phone
+
+Checked at 360 and 390 CSS pixels, which covers most phones in use. The page lays
+out at the device's own width — nothing forces a wider minimum, so the browser never
+zooms out and every control keeps the size it was designed at. The scoring keypad
+stays thumb-sized, and the bottom nav is reachable on every screen.
+
+The one thing that scrolls sideways is the live line score, inside its own bar. That
+is the design's intent: seven innings plus R/H/E will not fit across a phone, and the
+score that matters is pinned in the top bar anyway.
+
 ## Notes on fidelity
 
 Checked against `docs/screenshots/` at desktop width, in both themes.
