@@ -116,6 +116,11 @@ export function ScorebookProvider({
           games: cur.games.map((x) =>
             x.id === id ? { ...g, id, opp: x.opp, date: x.date, sample: x.sample } : x,
           ),
+          // A game that has ended is no longer the active one. Leaving it active
+          // makes Today advertise a finished game as in progress and offer to
+          // resume scoring it.
+          activeId:
+            cur.activeId === id && g.status !== 'in_progress' ? null : cur.activeId,
         };
         saveLocal(next);
         if (isConfigured) {

@@ -144,7 +144,11 @@ export function normalize(data: ScorebookData): ScorebookData {
     oppLineup: d.oppLineup ?? [],
     settings: { ...d.settings, timeLimit: d.settings?.timeLimit ?? 60 },
     games,
-    activeId: games.some((g) => g.id === d.activeId) ? d.activeId : null,
+    // Only an in-progress game is the active one; a document written before that
+    // was enforced can still point at a final game.
+    activeId: games.some((g) => g.id === d.activeId && g.status === 'in_progress')
+      ? d.activeId
+      : null,
   };
 }
 

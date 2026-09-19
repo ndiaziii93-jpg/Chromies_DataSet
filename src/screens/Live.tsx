@@ -262,15 +262,24 @@ export function Live() {
                   </text>
                 </g>
               ))}
-              <SprayDots dots={spray} r={1.6} />
+              <g style={css('pointer-events:none')}>
+                <SprayDots dots={spray} r={1.6} />
+              </g>
               {bases.map((b) => (
                 <g
                   key={b.i}
                   onClick={(e) => {
+                    // While a fielder tap is pending the bases are just part of the
+                    // field: a ball up the middle lands on second, which sits dead
+                    // centre. Swallowing that tap left the scorer pressing a spot
+                    // that did nothing, so let it fall through to onField instead.
+                    if (g.pending) return;
                     e.stopPropagation();
                     if (scoring) set(E.moveRunner(g, b.i - 1));
                   }}
-                  style={cssx('', { cursor: scoring ? 'pointer' : 'default' })}
+                  style={cssx('', {
+                    cursor: !scoring ? 'default' : g.pending ? 'crosshair' : 'pointer',
+                  })}
                 >
                   <rect
                     x={b.rx}
@@ -301,7 +310,9 @@ export function Live() {
             {g.pending && (
               <div
                 style={css(
-                  "position:absolute;left:12px;right:12px;top:12px;background:#FFC400;color:#111111;padding:10px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:10px;font:600 14px 'IBM Plex Sans',sans-serif",
+                  // The banner sits over deep outfield, which is a real place a ball goes.
+                  // It is a label, so let taps through it and keep Cancel clickable.
+                  "position:absolute;left:12px;right:12px;top:12px;pointer-events:none;background:#FFC400;color:#111111;padding:10px 14px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:10px;font:600 14px 'IBM Plex Sans',sans-serif",
                 )}
               >
                 <span>{E.LABEL[g.pending.outcome]} — tap where the ball went</span>
@@ -309,7 +320,7 @@ export function Live() {
                   type="button"
                   onClick={() => set(E.cancelPending(g))}
                   style={css(
-                    "border:0;background:#111;color:#fff;border-radius:3px;padding:7px 12px;font:600 13px 'IBM Plex Sans',sans-serif",
+                    "pointer-events:auto;border:0;background:#111;color:#fff;border-radius:3px;padding:7px 12px;font:600 13px 'IBM Plex Sans',sans-serif",
                   )}
                 >
                   Cancel
