@@ -28,10 +28,11 @@ export function playerAnalysis(games, player, roster) {
   const xbh = s.b2 + s.b3 + s.hr;
   if (s.h && xbh / s.h >= .4) out.strengths.push(`Thunder in the bat: ${xbh} of ${s.h} hits went for extra bases${s.hr ? ` and ${s.hr} left the premises entirely` : ''}. Outfielders, back up. No, further.`);
   else if (s.h && xbh === 0) out.strengths.push(`Death by a thousand singles — all ${s.h} hits were base knocks. Finds grass, keeps the line moving, drives the other team nuts.`);
-  const kRate = s.k / s.pa, bbRate = (s.bb + s.hbp) / s.pa;
+  const kRate = s.k / s.pa, bbRate = s.bb / s.pa;
   if (kRate >= .2) out.strengths.push(`About those strikeouts: ${pct(kRate)} of trips end in a K. It's slowpitch — the ball is basically asking to be hit.`);
   else if (kRate <= .05) out.strengths.push(`Practically allergic to strikeouts (${s.k} in ${s.pa} trips). Puts everything in play and lets the defense sweat.`);
-  if (bbRate >= .15) out.strengths.push(`Eagle eyes: on base by walk or HBP ${pct(bbRate)} of the time. Won't chase a thing — the umpire could use the help.`);
+  if (bbRate >= .15) out.strengths.push(`Eagle eyes: walks ${pct(bbRate)} of the time. Won't chase a thing — the umpire could use the help.`);
+  if (s.hbp) out.strengths.push(s.hbp >= 5 ? `Wears ${s.hbp} pitches and counting. At this point it is less bad luck than a career choice. The trainer knows ${first} by first name.` : s.hbp >= 2 ? `Plunked ${s.hbp} times this season. No base for it in slowpitch — just bruises and the moral high ground.` : `Took one on the arm once. Walked it off, got nothing for it, which is slowpitch for you.`);
   if (s.bip >= 8) {
     const side = s.pull >= .5 && s.pull > s.oppo + .1 ? `pulls the ball (${pct(s.pull)} to the left side)` : s.oppo >= .4 && s.oppo > s.pull + .1 ? `goes the other way (${pct(s.oppo)} to right)` : `sprays the field (${pct(s.pull)} left, ${pct(s.center)} center, ${pct(s.oppo)} right)`;
     out.strengths.push(`Scouting report on ${first}: ${side}. Shade accordingly, if you dare.`);
@@ -93,7 +94,9 @@ export function gameAnalysis(g, roster, allGames) {
   else if (changes === 0 && g.status === 'final' && w !== 'tie') out.turning.push(w === 'win' ? 'Wire to wire. Chromies scored first, never looked back, barely looked sideways.' : `${g.opp} scored first and the Chromies spent the whole game chasing the bus.`);
   const usPlays = plays.filter(l => S.usLog(g, l)), themPlays = plays.filter(l => S.themLog(g, l));
   const hits = usPlays.filter(l => S.HITS.has(l.outcome)), xbh = hits.filter(l => l.outcome !== '1B');
-  const bb = usPlays.filter(l => ['BB', 'HBP'].includes(l.outcome)).length, k = usPlays.filter(l => l.outcome === 'K').length;
+  const bb = usPlays.filter(l => l.outcome === 'BB').length, k = usPlays.filter(l => l.outcome === 'K').length;
+  const hbp = usPlays.filter(l => l.outcome === 'HBP').length;
+  if (hbp) out.summary.push(`${hbp} Chromie${hbp === 1 ? '' : 's'} wore a pitch. No bases awarded, no sympathy given.`);
   const hr = xbh.filter(l => l.outcome === 'HR').length;
   out.summary.push(`${hits.length >= 12 ? 'The bats were loud enough to wake the neighbors: ' : hits.length <= 5 ? 'Library-quiet at the plate — ' : ''}${hits.length} hits${xbh.length ? `, ${xbh.length} of them for extra bases${hr ? ` and ${hr} that needed a passport` : ''}` : ''}, ${bb} walk${bb === 1 ? '' : 's'} and ${k} strikeout${k === 1 ? '' : 's'} in ${usPlays.length} trips.`);
   let lob = 0; { let cur = null, lastBases = null; for (const l of g.log) { if (l.manager || l.scoreOnly) continue; const key = l.inning + l.half; if (key !== cur) { if (cur && lastBases && lastBases.us) lob += lastBases.b.filter(Boolean).length; cur = key; } lastBases = { b: l.basesAfter || [], us: S.usLog(g, l) }; } if (lastBases && lastBases.us && (g.status === 'final' || (g.inning + g.half) !== cur)) lob += lastBases.b.filter(Boolean).length; } if (lob >= 6) out.summary.push(`${lob} runners left stranded — enough to start their own team. That's the number that keeps the manager up tonight.`); else if (lob) out.summary.push(`Only ${lob} left on base. Efficient. Tidy. Chef's kiss.`);

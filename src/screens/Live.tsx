@@ -13,7 +13,7 @@ import { useActiveGame } from '../state/live';
 
 const KEY_H = '56px';
 const SHORT: Partial<Record<Outcome, string>> = {
-  BB: 'Walk', HBP: 'Hit by pitch', E: 'Error', FC: "Fielder's ch.", K: 'Strikeout',
+  BB: 'Walk', HBP: 'no base', E: 'Error', FC: "Fielder's ch.", K: 'Strikeout',
   GO: 'Ground out', FO: 'Fly out', LO: 'Line out', PO: 'Pop out', SF: 'Sac fly', DP: 'Double play',
 };
 
@@ -403,6 +403,23 @@ export function Live() {
                         onClick={o.onTap}
                         base={`min-height:${KEY_H};border:1.5px solid var(--muted3);border-radius:4px;background:var(--card);font:600 20px 'IBM Plex Mono',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px`}
                         active="background:#FFC400;color:#111111"
+                      >
+                        <span>{o.code}</span>
+                        <span style={css("font:400 10px 'IBM Plex Sans',sans-serif;color:inherit;opacity:.7")}>
+                          {o.short}
+                        </span>
+                      </PressKey>
+                    ))}
+                    {/* Tally keys sit in the same row so the grid keeps its shape, but
+                        they are drawn dashed and muted: tapping one records the event
+                        and changes nothing else on the field. */}
+                    {E.OUTCOMES.tally.map(mkKey).map((o) => (
+                      <PressKey
+                        key={o.code}
+                        onClick={o.onTap}
+                        title={`${E.LABEL[o.code]} — recorded for the season, no base awarded`}
+                        base={`min-height:${KEY_H};border:1.5px dashed var(--muted3);border-radius:4px;background:transparent;color:var(--muted2);font:600 20px 'IBM Plex Mono',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px`}
+                        active="background:var(--muted3);color:#111111"
                       >
                         <span>{o.code}</span>
                         <span style={css("font:400 10px 'IBM Plex Sans',sans-serif;color:inherit;opacity:.7")}>

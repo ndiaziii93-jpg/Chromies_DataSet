@@ -21,7 +21,7 @@ npm run preview    # serve the built site
 
 ```
 src/
-  engine/        scoring.js · stats.js · analysis.js  ← kept verbatim from the handoff
+  engine/        scoring.js · stats.js · analysis.js  ← from the handoff, one rule changed
                  (+ .d.ts type declarations, which describe them without touching them)
   lib/           types, the CSS helper, the shared range filter
   state/         the scorebook document, theme, roles, sync, navigation
@@ -31,7 +31,8 @@ supabase/        migration SQL and the passcode login edge function
 docs/            SUPABASE_SETUP.md, DEPLOY.md, and the reference screenshots
 ```
 
-**The three engine modules are the product and are byte-for-byte as delivered.**
+**The three engine modules are the product and came over as delivered**, with one
+rule changed since: hit by pitch awards no base (see *Notes on fidelity*).
 They are plain ES modules with no framework dependency; `allowJs` lets TypeScript
 import them directly, and the `.d.ts` files alongside describe their shapes without
 modifying them. Every number in the UI comes from `stats.js`/`analysis.js` reading
@@ -139,6 +140,15 @@ Checked against `docs/screenshots/` at desktop width, in both themes.
   populated; they are marked `sample` and **Remove sample games** takes them out
   without touching real ones. The generator is deterministic (seeded, and independent
   of the date), so the same roster always produces the same games.
+- **Hit by pitch awards no base.** The handoff treated HBP like a walk — batter to
+  first, runners forced, a run in from third with the bases loaded. This league does
+  not play it that way: you wear one, you dust yourself off, and the at-bat carries
+  on. `OUTCOMES.tally` now holds it, and tapping HBP moves nobody, records no out,
+  ends no plate appearance, and leaves on-base percentage alone; it only adds a line
+  to the log. The key sits in the ON BASE row so the keypad keeps its shape, drawn
+  dashed and muted and labelled *no base*. The count surfaces as an HBP tile on the
+  player card once someone has worn one, and in their written analysis, which is the
+  whole point of keeping it.
 - **The binder tabs read top-to-bottom, unlike the prototype.** It wrote them with
   `writing-mode:vertical-rl` plus `transform:rotate(180deg)`, which runs the label
   bottom-to-top and is awkward to read. The rotation is gone; because it had also

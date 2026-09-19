@@ -105,6 +105,8 @@ function PlayerCard({ player }: { player: Player }) {
     { k: 'RBI', v: String(s.rbi) },
     { k: 'BB', v: String(s.bb) },
     { k: 'K', v: String(s.k) },
+    // No base comes of it, so it earns a tile only once it has happened.
+    ...(s.hbp ? [{ k: 'HBP', v: String(s.hbp) }] : []),
   ];
 
   const gamelog = [...ranged]

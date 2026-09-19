@@ -1,7 +1,8 @@
 // Types for scoring.js. The implementation is kept verbatim from the design handoff.
 import type { Game, Outcome, Position, Mode, Contact } from '../lib/types';
 
-export const OUTCOMES: { hits: Outcome[]; onBase: Outcome[]; outs: Outcome[] };
+export const OUTCOMES: { hits: Outcome[]; onBase: Outcome[]; outs: Outcome[]; tally: Outcome[] };
+export const TALLY_ONLY: Set<Outcome>;
 export const NO_FIELD: Set<Outcome>;
 export const LABEL: Record<Outcome, string>;
 

@@ -13,18 +13,22 @@ export function batting(games, name) {
       if (!usLog(g, l)) { if (!l.scoreOnly && !l.manager && l.runs && l.runs.includes && l.runs.includes(name) && ((l.half === 'top') === g.weBatFirst)) s.r++; continue; }
       if (l.runs && l.runs.includes(name)) s.r++;
       if (l.batter !== name) continue;
-      played = true; s.pa++;
+      played = true;
       const o = l.outcome;
-      if (!['BB', 'HBP', 'SF'].includes(o)) s.ab++;
+      // A tally is not a trip to the plate — the at-bat is still going, and its real
+      // outcome arrives as its own log line. Count it, then get out of the way.
+      if (E.TALLY_ONLY.has(o)) { if (o === 'HBP') s.hbp++; continue; }
+      s.pa++;
+      if (!['BB', 'SF'].includes(o)) s.ab++;
       if (HITS.has(o)) { s.h++; s.tb += { '1B': 1, '2B': 2, '3B': 3, HR: 4 }[o]; if (o === '2B') s.b2++; if (o === '3B') s.b3++; if (o === 'HR') s.hr++; }
-      if (o === 'BB') s.bb++; if (o === 'HBP') s.hbp++; if (o === 'K') s.k++; if (o === 'SF') s.sf++;
+      if (o === 'BB') s.bb++; if (o === 'K') s.k++; if (o === 'SF') s.sf++;
       s.rbi += l.rbi || 0;
       if (l.fieldX != null) { s.spray.push({ x: l.fieldX, y: l.fieldY, hit: HITS.has(o), outcome: o }); if (s.contact[l.contact] != null) s.contact[l.contact]++; }
     }
     if (played) s.games++;
   }
   s.avg = s.ab ? s.h / s.ab : 0;
-  s.obp = s.pa ? (s.h + s.bb + s.hbp) / (s.ab + s.bb + s.hbp + s.sf || 1) : 0;
+  s.obp = s.pa ? (s.h + s.bb) / (s.ab + s.bb + s.sf || 1) : 0;
   s.slg = s.ab ? s.tb / s.ab : 0;
   s.bip = s.spray.length;
   s.pull = s.bip ? s.spray.filter(p => p.x < 44).length / s.bip : 0; // right-handed pull side = left field
@@ -40,10 +44,12 @@ export function fielding(games, pos) {
 export function teamBatting(games) {
   const all = { ab: 0, h: 0, bb: 0, hbp: 0, sf: 0, k: 0 };
   for (const g of games) for (const l of g.log) if (usLog(g, l)) {
-    const o = l.outcome; if (!['BB', 'HBP', 'SF'].includes(o)) all.ab++;
-    if (HITS.has(o)) all.h++; if (o === 'BB') all.bb++; if (o === 'HBP') all.hbp++; if (o === 'SF') all.sf++; if (o === 'K') all.k++;
+    const o = l.outcome;
+    if (o === 'HBP') { all.hbp++; continue; }
+    if (!['BB', 'SF'].includes(o)) all.ab++;
+    if (HITS.has(o)) all.h++; if (o === 'BB') all.bb++; if (o === 'SF') all.sf++; if (o === 'K') all.k++;
   }
-  all.avg = all.ab ? all.h / all.ab : 0; all.obp = (all.ab + all.bb + all.hbp + all.sf) ? (all.h + all.bb + all.hbp) / (all.ab + all.bb + all.hbp + all.sf) : 0;
+  all.avg = all.ab ? all.h / all.ab : 0; all.obp = (all.ab + all.bb + all.sf) ? (all.h + all.bb) / (all.ab + all.bb + all.sf) : 0;
   return all;
 }
 export function lineScore(g, n = 7) {

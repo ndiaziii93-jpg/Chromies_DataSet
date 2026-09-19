@@ -1,9 +1,12 @@
 // Chromies scoring engine — pure functions over a game state. No derived stats stored.
 export const OUTCOMES = {
   hits: ['1B','2B','3B','HR'],
-  onBase: ['BB','HBP','E','FC'],
+  onBase: ['BB','E','FC'],
   outs: ['K','GO','FO','LO','PO','SF','DP'],
+  // Logged for the record and nothing else: no base, no out, no runner moves.
+  tally: ['HBP'],
 };
+export const TALLY_ONLY = new Set(OUTCOMES.tally);
 export const NO_FIELD = new Set(['K','BB','HBP']);
 export const LABEL = {'1B':'Single','2B':'Double','3B':'Triple',HR:'Home run',BB:'Walk',HBP:'Hit by pitch',E:'Error',FC:"Fielder's choice",K:'Strikeout',GO:'Groundout',FO:'Flyout',LO:'Lineout',PO:'Pop out',SF:'Sac fly',DP:'Double play'};
 // Slowpitch: 10 fielders (four outfielders). Field coordinates in a 0–100 square, home plate at (50,92).
@@ -60,10 +63,14 @@ function advance(outcome, bases, batter) {
     case '2B': score(b3); score(b2); nb = [null, batter, b1]; break;
     case '3B': score(b3); score(b2); score(b1); nb = [null, null, batter]; break;
     case 'HR': score(b3); score(b2); score(b1); score(batter); break;
-    case 'BB': case 'HBP': case 'E':
+    case 'BB': case 'E':
       if (b1 && b2 && b3) score(b3);
       nb = b1 ? (b2 ? [batter, b1, b2] : [batter, b1, b3]) : [batter, b2, b3];
       break;
+    // Slowpitch: wearing one is not a free base. It is recorded so the season can
+    // say who keeps getting plunked, and that is all it does — the batter stays in
+    // the box and every runner stays put.
+    case 'HBP': nb = [b1, b2, b3]; break;
     case 'FC': out = 1; // lead forced runner out, batter safe at 1st
       nb = !b1 ? [batter, b2, b3] : !b2 ? [batter, null, b3] : !b3 ? [batter, b1, null] : [batter, b1, b2];
       break;
@@ -98,7 +105,8 @@ function commit(g0, outcome, field) {
   g.log = [...g.log, { inning: g.inning, half: g.half, batter, outcome, contact: field?.contact ?? 'none', fieldX: field?.x, fieldY: field?.y, fielder: field?.fielder, attr, runs, rbi, outsBefore: g.outs, basesBefore: g0.bases, basesAfter: bases }];
   if (weAreBatting(g)) g.score.us += runs.length; else g.score.them += runs.length;
   g.bases = bases; g.outs += out;
-  if (weAreBatting(g)) g.batterIdx += 1; else g.oppBatter = null;
+  // A tally does not use up the trip: the same batter is still up afterwards.
+  if (!TALLY_ONLY.has(outcome)) { if (weAreBatting(g)) g.batterIdx += 1; else g.oppBatter = null; }
   if (g.outs >= 3) g = endHalf(g);
   return g;
 }
