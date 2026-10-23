@@ -20,7 +20,7 @@ const AT = [
   { x: 59, y: 18 },
   { x: 18, y: 59 },
 ];
-const SIDE = 16;
+const SIDE = 19;
 
 export interface DiamondProps {
   /** Engine order: first, second, third. */
@@ -39,7 +39,7 @@ export function Diamond({ bases, numFor, size = 124, scored = false, onStrip = t
 
   const full = onStrip ? 'var(--accent)' : 'var(--data-a)';
   const empty = onStrip ? '#1C1C1A' : 'var(--card2)';
-  const edge = onStrip ? '#4A4A46' : 'var(--line)';
+  const edge = onStrip ? '#6E6E68' : 'var(--line)';
   const path = onStrip ? '#3A3A36' : 'var(--line)';
   const numInk = onStrip ? '#111111' : 'var(--on-accent)';
 
@@ -90,7 +90,8 @@ export function Diamond({ bases, numFor, size = 124, scored = false, onStrip = t
 
       {AT.map((b, i) => {
         const id = occupied[i];
-        const num = i && id && numFor ? numFor(id).trim() : '';
+        // pnum() hands back '#33'; the hash does not fit and does not help.
+        const num = i && id && numFor ? numFor(id).replace(/^#/, '').trim().slice(0, 2) : '';
         if (!num) return null;
         return (
           <text
@@ -99,7 +100,7 @@ export function Diamond({ bases, numFor, size = 124, scored = false, onStrip = t
             y={b.y}
             textAnchor="middle"
             dominantBaseline="central"
-            style={cssx("font:700 11px 'IBM Plex Mono',monospace", { fill: numInk })}
+            style={cssx("font:700 10px 'IBM Plex Mono',monospace", { fill: numInk })}
           >
             {num}
           </text>

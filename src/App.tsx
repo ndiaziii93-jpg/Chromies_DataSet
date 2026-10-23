@@ -14,7 +14,7 @@ import { useScorebook } from './state/store';
 import { liveHeadline, useActiveGame } from './state/live';
 
 export function App() {
-  const { data, role } = useScorebook();
+  const { data, role, design } = useScorebook();
   const nav = useNav();
   const active = useActiveGame();
 
@@ -31,11 +31,14 @@ export function App() {
   }[nav.tab];
 
   const head = active ? liveHeadline(active) : null;
-  const right = head
-    ? `${head.us}–${head.them} · ${head.inning}`
-    : finals.length
-      ? `${rec.w}–${rec.l}${rec.t ? '–' + rec.t : ''}`
-      : '';
+  const season = finals.length ? `${rec.w}–${rec.l}${rec.t ? '–' + rec.t : ''}` : '';
+  // On Live the glance bar already carries the score at 36px; repeating it up
+  // here in 13px is noise. Everywhere else the live score is the useful thing.
+  const onLiveWithGlance = nav.tab === 'live' && design === 'diamond' && Boolean(active);
+  const right =
+    onLiveWithGlance ? season
+    : head ? `${head.us}–${head.them} · ${head.inning}`
+    : season;
 
   return (
     <div

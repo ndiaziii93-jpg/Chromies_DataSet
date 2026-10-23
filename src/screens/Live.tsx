@@ -5,6 +5,7 @@ import { css, cssx } from '../lib/css';
 import type { Game, LogEntry, Outcome, PlayLog, SidePanel } from '../lib/types';
 import { ChromiesLabel } from '../components/Wordmark';
 import { FieldBackdrop, SprayDots } from '../components/Field';
+import { GlanceBar, RunBanner } from '../components/Glance';
 import { PressKey, SectionLabel } from '../components/ui';
 import { useNav } from '../state/nav';
 import { can } from '../state/roles';
@@ -20,7 +21,7 @@ const SHORT: Partial<Record<Outcome, string>> = {
 const isPlay = (l: LogEntry): l is PlayLog => !l.manager && !l.scoreOnly;
 
 export function Live() {
-  const { data, patchGame, pname, pnum, role } = useScorebook();
+  const { data, patchGame, pname, pnum, role, design } = useScorebook();
   const nav = useNav();
   const active = useActiveGame();
 
@@ -116,6 +117,22 @@ export function Live() {
     };
   });
 
+  // The run that just landed. Held until the next play, so the scorer sees it
+  // even if they looked up at the field for a moment.
+  const justScored = Boolean(lastPlay && lastPlay.runs.length > 0 && S.usLog(g, lastPlay));
+  const scoredLine = (() => {
+    if (!lastPlay || !lastPlay.runs.length) return { who: '', detail: '' };
+    const names = lastPlay.runs.map((id) => pname(id).trim()).filter(Boolean);
+    const who =
+      names.length === 0 ? `${lastPlay.runs.length} score`
+      : names.length === 1 ? `${names[0]} scores`
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} score`;
+    const by = pname(lastPlay.batter).trim() || 'The batter';
+    const where = lastPlay.fielder ? ` to ${lastPlay.fielder}` : '';
+    const rbi = lastPlay.rbi ? ` \u00b7 ${lastPlay.rbi} RBI` : '';
+    return { who, detail: `${by}: ${E.LABEL[lastPlay.outcome]}${where}${rbi}` };
+  })();
+
   const line = S.lineScore(g);
   const half = g.half === 'top' ? '▲' : '▼';
   const inningLabel = !inP ? 'FINAL' : `${half} ${E.ordinal(g.inning).toUpperCase()}`;
@@ -142,81 +159,30 @@ export function Live() {
 
   return (
     <div style={css('display:flex;flex-direction:column;min-height:0')}>
-      {/* Scorebug */}
-      <div
-        style={css(
-          'background:#111;color:#fff;padding:12px 20px 14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;overflow-x:auto',
-        )}
-      >
-        <table
-          style={css("border-collapse:collapse;font:500 14px 'IBM Plex Mono',monospace;white-space:nowrap")}
+      {/* The scorebug. Diamond puts the state up large and keeps the line
+          score beneath it; classic is the original strip, unchanged. */}
+      {design === 'diamond' ? (
+        <GlanceBar
+          game={g}
+          oppName={g.opp}
+          numFor={pnum}
+          scored={justScored}
+          runs={lastPlay ? lastPlay.runs.length : 0}
         >
-          <thead>
-            <tr style={css('color:#888;font-size:11px')}>
-              <th style={css('text-align:left;padding:0 12px 4px 0;font-weight:500')} />
-              {line.innings.map((n) => (
-                <th key={n} style={css('padding:0 7px 4px;font-weight:500;min-width:18px')}>
-                  {n}
-                </th>
-              ))}
-              <th style={css('padding:0 8px 4px 18px;font-weight:600;color:#fff')}>R</th>
-              <th style={css('padding:0 8px 4px;font-weight:500')}>H</th>
-              <th style={css('padding:0 8px 4px;font-weight:500')}>E</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={css("padding:3px 12px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600")}>
-                <ChromiesLabel />
-              </td>
-              {line.us.map((c, i) => (
-                <td key={i} style={css('padding:3px 7px;text-align:center')}>
-                  {c.v}
-                </td>
-              ))}
-              <td style={css('padding:3px 8px 3px 18px;text-align:center;font-weight:700;background:#FFC400;color:#111111')}>
-                {g.score.us}
-              </td>
-              <td style={css('padding:3px 8px;text-align:center')}>{line.hitsUs}</td>
-              <td style={css('padding:3px 8px;text-align:center')}>{line.errUs}</td>
-            </tr>
-            <tr>
-              <td style={css("padding:3px 12px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600;color:#AAA")}>
-                {g.opp}
-              </td>
-              {line.them.map((c, i) => (
-                <td key={i} style={css('padding:3px 7px;text-align:center')}>
-                  {c.v}
-                </td>
-              ))}
-              <td style={css('padding:3px 8px 3px 18px;text-align:center;font-weight:700;background:#333')}>
-                {g.score.them}
-              </td>
-              <td style={css('padding:3px 8px;text-align:center')}>{line.hitsThem}</td>
-              <td style={css('padding:3px 8px;text-align:center')}>{line.errThem}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div
-          style={css(
-            "display:flex;align-items:center;gap:18px;font:600 13px 'IBM Plex Mono',monospace;letter-spacing:.04em",
-          )}
-        >
-          <span style={css('color:#FFC400')}>{inningLabel}</span>
-          <span style={css('display:flex;align-items:center;gap:6px')}>
-            OUT
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                style={cssx('width:12px;height:12px;border-radius:2px;border:1.5px solid #fff', {
-                  background: i < g.outs ? '#FFC400' : 'transparent',
-                })}
-              />
-            ))}
-          </span>
-          <span style={css('color:#AAA')}>{E.timeLeft(g)}</span>
-        </div>
-      </div>
+          <LineScoreTable g={g} line={line} />
+        </GlanceBar>
+      ) : (
+        <ClassicScorebug g={g} line={line} inningLabel={inningLabel} />
+      )}
+
+      {justScored && (
+        <RunBanner
+          scorers={scoredLine.who}
+          detail={scoredLine.detail}
+          onUndo={() => set(E.undo(g))}
+          canUndo={scoring && (g.history ?? []).length > 0}
+        />
+      )}
 
       <div
         style={css(
@@ -920,6 +886,156 @@ function NoGame() {
       >
         Go to Today
       </button>
+    </div>
+  );
+}
+
+/** The original strip, kept verbatim for anyone who switches back. */
+function ClassicScorebug({
+  g,
+  line,
+  inningLabel,
+}: {
+  g: Game;
+  line: ReturnType<typeof S.lineScore>;
+  inningLabel: string;
+}) {
+  return (
+      <div
+        style={css(
+          'background:#111;color:#fff;padding:12px 20px 14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;overflow-x:auto',
+        )}
+      >
+        <table
+          style={css("border-collapse:collapse;font:500 14px 'IBM Plex Mono',monospace;white-space:nowrap")}
+        >
+          <thead>
+            <tr style={css('color:#888;font-size:11px')}>
+              <th style={css('text-align:left;padding:0 12px 4px 0;font-weight:500')} />
+              {line.innings.map((n) => (
+                <th key={n} style={css('padding:0 7px 4px;font-weight:500;min-width:18px')}>
+                  {n}
+                </th>
+              ))}
+              <th style={css('padding:0 8px 4px 18px;font-weight:600;color:#fff')}>R</th>
+              <th style={css('padding:0 8px 4px;font-weight:500')}>H</th>
+              <th style={css('padding:0 8px 4px;font-weight:500')}>E</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={css("padding:3px 12px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600")}>
+                <ChromiesLabel />
+              </td>
+              {line.us.map((c, i) => (
+                <td key={i} style={css('padding:3px 7px;text-align:center')}>
+                  {c.v}
+                </td>
+              ))}
+              <td style={css('padding:3px 8px 3px 18px;text-align:center;font-weight:700;background:#FFC400;color:#111111')}>
+                {g.score.us}
+              </td>
+              <td style={css('padding:3px 8px;text-align:center')}>{line.hitsUs}</td>
+              <td style={css('padding:3px 8px;text-align:center')}>{line.errUs}</td>
+            </tr>
+            <tr>
+              <td style={css("padding:3px 12px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600;color:#AAA")}>
+                {g.opp}
+              </td>
+              {line.them.map((c, i) => (
+                <td key={i} style={css('padding:3px 7px;text-align:center')}>
+                  {c.v}
+                </td>
+              ))}
+              <td style={css('padding:3px 8px 3px 18px;text-align:center;font-weight:700;background:#333')}>
+                {g.score.them}
+              </td>
+              <td style={css('padding:3px 8px;text-align:center')}>{line.hitsThem}</td>
+              <td style={css('padding:3px 8px;text-align:center')}>{line.errThem}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div
+          style={css(
+            "display:flex;align-items:center;gap:18px;font:600 13px 'IBM Plex Mono',monospace;letter-spacing:.04em",
+          )}
+        >
+          <span style={css('color:#FFC400')}>{inningLabel}</span>
+          <span style={css('display:flex;align-items:center;gap:6px')}>
+            OUT
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                style={cssx('width:12px;height:12px;border-radius:2px;border:1.5px solid #fff', {
+                  background: i < g.outs ? '#FFC400' : 'transparent',
+                })}
+              />
+            ))}
+          </span>
+          <span style={css('color:#AAA')}>{E.timeLeft(g)}</span>
+        </div>
+      </div>
+  );
+}
+
+/**
+ * The line score, inning by inning, with runs, hits and errors. It keeps its
+ * place under the glance bar — the diamond answers "who is on", this answers
+ * "how did we get here".
+ */
+function LineScoreTable({ g, line }: { g: Game; line: ReturnType<typeof S.lineScore> }) {
+  const cell = 'padding:3px 6px;text-align:center';
+  return (
+    <div style={css('overflow-x:auto;margin:0 -2px')}>
+      <table
+        style={css(
+          "border-collapse:collapse;font:500 12px 'IBM Plex Mono',monospace;white-space:nowrap;font-variant-numeric:tabular-nums",
+        )}
+      >
+        <thead>
+          <tr style={css('color:var(--on-strip-muted);font-size:10px')}>
+            <th style={css('text-align:left;padding:0 10px 3px 0;font-weight:500')} />
+            {line.innings.map((n) => (
+              <th key={n} style={css('padding:0 6px 3px;font-weight:500;min-width:16px')}>
+                {n}
+              </th>
+            ))}
+            <th style={css('padding:0 6px 3px 14px;font-weight:700;color:var(--accent)')}>R</th>
+            <th style={css('padding:0 6px 3px;font-weight:500')}>H</th>
+            <th style={css('padding:0 6px 3px;font-weight:500')}>E</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={css("padding:3px 10px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12px")}>
+              <ChromiesLabel />
+            </td>
+            {line.us.map((c, i) => (
+              <td key={i} style={css(cell)}>
+                {c.v}
+              </td>
+            ))}
+            <td style={css('padding:3px 6px 3px 14px;text-align:center;font-weight:700')}>{g.score.us}</td>
+            <td style={css(cell)}>{line.hitsUs}</td>
+            <td style={css(cell)}>{line.errUs}</td>
+          </tr>
+          <tr style={css('color:var(--on-strip-muted)')}>
+            <td style={css("padding:3px 10px 3px 0;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12px")}>
+              {g.opp}
+            </td>
+            {line.them.map((c, i) => (
+              <td key={i} style={css(cell)}>
+                {c.v}
+              </td>
+            ))}
+            <td style={css('padding:3px 6px 3px 14px;text-align:center;font-weight:700;color:var(--on-strip)')}>
+              {g.score.them}
+            </td>
+            <td style={css(cell)}>{line.hitsThem}</td>
+            <td style={css(cell)}>{line.errThem}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
