@@ -98,9 +98,13 @@ export interface Game {
   sample?: boolean;
 }
 
+export type Design = 'classic' | 'diamond';
+
 export interface Settings {
   timeLimit: number;
   theme?: Theme;
+  /** Which visual language to draw. Switchable at the field; see docs/DESIGN.md. */
+  design?: Design;
 }
 
 export interface ScorebookData {
@@ -114,5 +118,5 @@ export interface ScorebookData {
 
 export type Tab = 'today' | 'live' | 'games' | 'players' | 'trends' | 'manage';
 export type SidePanel = 'score' | 'lineup' | 'manager';
-export type RangeKey = '5' | '10' | 'weekend' | 'season' | 'last' | 'all';
+export type RangeKey = '5' | '10' | 'weekend' | 'weekend2' | 'season' | 'last' | 'all';
 export type SprayFilter = 'all' | 'hits' | 'outs';

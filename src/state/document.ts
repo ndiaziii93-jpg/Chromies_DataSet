@@ -59,7 +59,7 @@ export function freshData(): ScorebookData {
     // season fills the app with demo games whenever you want to see it populated.
     games: [],
     activeId: null,
-    settings: { timeLimit: 60 },
+    settings: { timeLimit: 60, design: 'diamond' },
   };
 }
 
@@ -142,7 +142,11 @@ export function normalize(data: ScorebookData): ScorebookData {
   return {
     ...d,
     oppLineup: d.oppLineup ?? [],
-    settings: { ...d.settings, timeLimit: d.settings?.timeLimit ?? 60 },
+    settings: {
+      ...d.settings,
+      timeLimit: d.settings?.timeLimit ?? 60,
+      design: d.settings?.design ?? 'diamond',
+    },
     games,
     // Only an in-progress game is the active one; a document written before that
     // was enforced can still point at a final game.

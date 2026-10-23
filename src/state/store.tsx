@@ -3,7 +3,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Game, ScorebookData, Theme } from '../lib/types';
+import type { Design, Game, ScorebookData, Theme } from '../lib/types';
 import { freshData, loadLocal, saveLocal } from './document';
 import { applyTheme } from './theme';
 import { clientFor, isConfigured, readSession, writeSession, type Role, type Session } from './supabase';
@@ -18,6 +18,8 @@ interface Store {
   signOut: () => void;
   theme: Theme;
   setTheme: (t: Theme) => void;
+  /** Which visual language to draw. Every screen reads this; Manage flips it. */
+  design: Design;
   sync: { state: SyncState; detail?: string; pending: number };
   /** Roster name for a player id, or a readable label for an opposition batter. */
   pname: (id: string) => string;
@@ -134,6 +136,9 @@ export function ScorebookProvider({
   );
 
   const theme: Theme = data.settings.theme ?? 'light';
+  // Diamond is the shipped look; classic keeps the original prototype styling
+  // so a scorer can switch back mid-weekend without losing anything.
+  const design: Design = data.settings.design ?? 'diamond';
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
@@ -186,12 +191,13 @@ export function ScorebookProvider({
       signOut,
       theme,
       setTheme,
+      design,
       sync,
       pname,
       pnum,
       fmtDate,
     }),
-    [data, save, patchGame, session?.role, signOut, theme, setTheme, sync, pname, pnum, fmtDate],
+    [data, save, patchGame, session?.role, signOut, theme, setTheme, design, sync, pname, pnum, fmtDate],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -7,6 +7,7 @@ export const RANGES: { key: RangeKey; label: string; title: string }[] = [
   { key: '5', label: 'L5', title: 'Last 5 games' },
   { key: '10', label: 'L10', title: 'Last 10 games' },
   { key: 'weekend', label: 'WKND', title: 'Past weekend' },
+  { key: 'weekend2', label: '2WK', title: 'Past two weekends' },
   { key: 'season', label: 'SZN', title: 'This season' },
   { key: 'last', label: 'LAST', title: 'Last season' },
   { key: 'all', label: 'ALL', title: 'All time' },
@@ -21,12 +22,12 @@ export const RANGE_TABS: BinderTab[] = RANGES.map((r) => ({
 export const rangeTitle = (key: RangeKey): string =>
   (RANGES.find((r) => r.key === key)?.title ?? '').toUpperCase();
 
-/** Friday through Sunday of the weekend just played. */
-function lastWeekend(now: number): [number, number] {
+/** Friday through Sunday of the weekend just played, going back `n` weekends. */
+function lastWeekend(now: number, n = 1): [number, number] {
   const d = new Date(now);
   const back = d.getDay() === 0 ? 0 : d.getDay();
   const sun = new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
-  const fri = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() - 2);
+  const fri = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() - 2 - (n - 1) * 7);
   return [fri.getTime(), sun.getTime() + DAY];
 }
 
@@ -34,10 +35,12 @@ function lastWeekend(now: number): [number, number] {
 export function applyRange(list: Game[], range: RangeKey, now = Date.now()): Game[] {
   const yr = new Date(now).getFullYear();
   const weekend = lastWeekend(now);
+  const weekend2 = lastWeekend(now, 2);
   const inRange = (g: Game) =>
     range === 'season' ? new Date(g.date).getFullYear() === yr
     : range === 'last' ? new Date(g.date).getFullYear() === yr - 1
     : range === 'weekend' ? g.date >= weekend[0] && g.date < weekend[1]
+    : range === 'weekend2' ? g.date >= weekend2[0] && g.date < weekend2[1]
     : true;
 
   const counted = range === '5' || range === '10';
