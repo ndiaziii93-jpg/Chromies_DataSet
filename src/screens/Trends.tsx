@@ -2,6 +2,8 @@ import * as S from '../engine/stats.js';
 import { css, cssx } from '../lib/css';
 import type { Game, PlayLog, RangeKey, ScoreOnlyLog, SprayFilter } from '../lib/types';
 import { applyRange, RANGE_TABS, rangeTitle } from '../lib/ranges';
+import { groupByWeekend } from '../lib/marks';
+import { Mark, MarkLegend } from '../components/Diamond';
 import { SprayField } from '../components/Field';
 import { BinderFrame, BinderLayout, BinderTabs, ContactBars, SectionLabel } from '../components/ui';
 import { useNav } from '../state/nav';
@@ -74,6 +76,8 @@ export function Trends() {
               />
               <WhereWeHitIt games={chron} filter={nav.sprayFilter} onFilter={nav.setSprayFilter} />
               <RunsByInning games={chron} />
+              <ByWeekend games={chron} onOpen={nav.openGame} />
+              <Leaders games={chron} roster={data.roster} onOpen={nav.openPlayer} />
             </div>
           )}
         </BinderFrame>
@@ -141,7 +145,7 @@ function RunDifferential({
                   style={cssx('border-radius:2px', {
                     background: d >= 0 ? 'var(--ink)' : 'var(--muted3)',
                     height: Math.round((Math.abs(d) / mx) * 100) + '%',
-                    outline: on ? '2px solid #FFC400' : 'none',
+                    outline: on ? '2px solid var(--data-b)' : 'none',
                   })}
                 />
               </div>
@@ -225,8 +229,8 @@ function RunningAverage({
                 cx={p.x}
                 cy={p.y}
                 r={on ? 5 : 3.5}
-                fill={on || i === pts.length - 1 ? '#FFC400' : 'var(--card)'}
-                stroke={on ? '#FFC400' : '#111'}
+                fill={on || i === pts.length - 1 ? 'var(--data-a)' : 'var(--card)'}
+                stroke={on ? 'var(--data-a)' : 'var(--ink)'}
                 strokeWidth="1.5"
               />
             </g>
@@ -370,12 +374,12 @@ function RunsByInning({ games }: { games: Game[] }) {
               {u}
             </span>
             <div
-              style={cssx('background:#FFC400;border-radius:2px 2px 0 0', {
+              style={cssx('background:var(--data-a);border-radius:2px 2px 0 0', {
                 height: Math.round((u / mx) * 80) + '%',
               })}
             />
             <div
-              style={cssx('background:#999;border-radius:0 0 2px 2px', {
+              style={cssx('background:var(--data-b);border-radius:0 0 2px 2px', {
                 height: Math.round((byThem[i] / mx) * 80) + '%',
               })}
             />
@@ -397,11 +401,11 @@ function RunsByInning({ games }: { games: Game[] }) {
       </div>
       <div style={css('display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap')}>
         <span>
-          <span style={css('display:inline-block;width:10px;height:10px;background:#FFC400;vertical-align:-1px')} />{' '}
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-a);vertical-align:-1px')} />{' '}
           Chromies · {usTotal} total
         </span>
         <span>
-          <span style={css('display:inline-block;width:10px;height:10px;background:#999;vertical-align:-1px')} />{' '}
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-b);vertical-align:-1px')} />{' '}
           Opponents · {themTotal} total
         </span>
         <span style={css('color:var(--muted3)')}>
@@ -432,6 +436,168 @@ function Zone({ bg, label, value }: { bg: string; label: string; value: string }
       {label}
       <br />
       <span style={css('font-size:22px')}>{value}</span>
+    </div>
+  );
+}
+
+/**
+ * The season in blocks. A slowpitch season is played over weekends, not evenly
+ * across the calendar, so this is usually the shape people actually remember:
+ * which weekend went well, and by how much.
+ */
+function ByWeekend({ games, onOpen }: { games: Game[]; onOpen: (id: string) => void }) {
+  const weekends = groupByWeekend(games);
+  if (weekends.length < 2) return null;
+
+  const mx = Math.max(1, ...weekends.map((w) => Math.max(w.runsFor, w.runsAgainst)));
+  const best = weekends.reduce((a, b) =>
+    b.runsFor - b.runsAgainst > a.runsFor - a.runsAgainst ? b : a,
+  );
+
+  return (
+    <div style={css(CARD)}>
+      <div style={css(CARD_HEAD)}>
+        <span style={css(CARD_TITLE)}>By weekend</span>
+        <span style={css(CARD_VALUE)}>{weekends.length}</span>
+      </div>
+
+      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;gap:10px;height:150px')}>
+        {weekends.map((w) => (
+          <div
+            key={w.n}
+            style={css('flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px')}
+          >
+            <div style={css('display:flex;align-items:flex-end;gap:2px;height:104px')}>
+              {[
+                { v: w.runsFor, bg: 'var(--data-a)' },
+                { v: w.runsAgainst, bg: 'var(--data-b)' },
+              ].map((bar, i) => (
+                <div
+                  key={i}
+                  style={css('display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end')}
+                >
+                  <span style={css("font:600 10px 'IBM Plex Mono',monospace;color:var(--muted)")}>
+                    {bar.v}
+                  </span>
+                  <span
+                    style={cssx('width:20px;border-radius:4px 4px 0 0', {
+                      background: bar.bg,
+                      height: Math.max(3, Math.round((bar.v / mx) * 84)) + 'px',
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
+            <span style={css("font:600 11px 'IBM Plex Mono',monospace;color:var(--muted)")}>
+              W{w.n}
+            </span>
+            <span style={css("font:700 12px 'IBM Plex Mono',monospace;color:var(--ink)")}>
+              {w.won}–{w.lost}
+            </span>
+            <span style={css('display:flex;gap:3px;flex-wrap:wrap;justify-content:center')}>
+              {w.games.map((g) => (
+                <Mark
+                  key={g.id}
+                  kind={g.score.us > g.score.them ? 'win' : 'loss'}
+                  size={9}
+                  title={`vs ${g.opp} · ${g.score.us}–${g.score.them}`}
+                />
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div style={css('display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap')}>
+        <span>
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-a);vertical-align:-1px')} />{' '}
+          Chromies
+        </span>
+        <span>
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-b);vertical-align:-1px')} />{' '}
+          Opponents
+        </span>
+        <MarkLegend kinds={['win', 'loss']} />
+      </div>
+
+      <div style={css(DETAIL)}>
+        <span>
+          Best weekend: W{best.n}, {best.won}–{best.lost} and {best.runsFor - best.runsAgainst > 0 ? '+' : ''}
+          {best.runsFor - best.runsAgainst} on runs.
+        </span>
+        {best.games.length > 0 && <OpenRecap onClick={() => onOpen(best.games[0].id)} />}
+      </div>
+    </div>
+  );
+}
+
+/** Who is carrying the bat, and which way they are heading. */
+function Leaders({
+  games,
+  roster,
+  onOpen,
+}: {
+  games: Game[];
+  roster: { id: string; name: string; num: string }[];
+  onOpen: (id: string) => void;
+}) {
+  const recent = games.slice(-5);
+  const rows = roster
+    .map((p) => {
+      const all = S.batting(games, p.id);
+      const last = S.batting(recent, p.id);
+      return { p, all, last };
+    })
+    .filter((r) => r.all.ab >= 5)
+    .sort((a, b) => b.all.avg - a.all.avg)
+    .slice(0, 5);
+
+  if (!rows.length) return null;
+
+  return (
+    <div style={css(CARD)}>
+      <div style={css(CARD_HEAD)}>
+        <span style={css(CARD_TITLE)}>Who is carrying it</span>
+        <span style={css(CARD_VALUE)}>{rows.length}</span>
+      </div>
+
+      <div style={css('display:flex;flex-direction:column')}>
+        {rows.map(({ p, all, last }) => {
+          const delta = last.ab >= 3 ? last.avg - all.avg : 0;
+          const arrow = delta > 0.04 ? '▲' : delta < -0.04 ? '▼' : '—';
+          const tone =
+            delta > 0.04 ? 'var(--data-b)' : delta < -0.04 ? 'var(--muted)' : 'var(--muted3)';
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onOpen(p.id)}
+              style={css(
+                'display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 2px;border:0;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;text-align:left;color:var(--ink)',
+              )}
+            >
+              <span style={css("font:700 11px 'IBM Plex Mono',monospace;color:var(--muted2);min-width:22px")}>
+                {p.num}
+              </span>
+              <span style={css("flex-grow:1;font:500 15px 'IBM Plex Sans',sans-serif")}>{p.name}</span>
+              <span style={cssx("font:600 11px 'IBM Plex Mono',monospace", { color: tone })}>
+                {arrow} {last.ab >= 3 ? S.fmt3(last.avg) : '—'}
+              </span>
+              <span
+                style={css(
+                  "font:700 14px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;min-width:42px;text-align:right",
+                )}
+              >
+                {S.fmt3(all.avg)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={css(DETAIL)}>
+        <span>Season average, with the last five games beside it.</span>
+      </div>
     </div>
   );
 }
