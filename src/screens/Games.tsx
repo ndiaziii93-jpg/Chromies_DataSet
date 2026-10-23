@@ -48,7 +48,7 @@ function GamesList() {
 }
 
 function Recap({ game: g }: { game: Game }) {
-  const { data, save, pname, pnum, fmtDate, role } = useScorebook();
+  const { data, save, pname, pnum, fmtDate, role, design } = useScorebook();
   const nav = useNav();
   const [copied, setCopied] = useState('');
 
@@ -168,6 +168,17 @@ function Recap({ game: g }: { game: Game }) {
           </tbody>
         </table>
       </div>
+
+      {design === 'diamond' && (
+        <div
+          style={css(
+            'display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start',
+          )}
+        >
+          <TeamStats game={g} line={line} />
+          <BoxScore game={g} pname={pname} pnum={pnum} />
+        </div>
+      )}
 
       <div
         style={css(
@@ -370,6 +381,164 @@ function PlayRow({
       <span style={css("font:600 12px 'IBM Plex Mono',monospace;color:var(--muted2)")}>{inn}</span>
       <span style={cssx('', { color: fg })}>{text}</span>
       <span style={css("font:600 12px 'IBM Plex Mono',monospace;color:#6B4A00")}>{runs}</span>
+    </div>
+  );
+}
+
+/**
+ * The two teams side by side on the measures that decide a slowpitch game.
+ * Bars grow from the middle so the gap is the thing you read, not the numbers.
+ */
+function TeamStats({ game: g, line }: { game: Game; line: ReturnType<typeof S.lineScore> }) {
+  const us = g.log.filter((l): l is PlayLog => !l.manager && !l.scoreOnly && S.usLog(g, l));
+  const them = g.log.filter((l): l is PlayLog => !l.manager && !l.scoreOnly && S.themLog(g, l));
+  const xbh = (ls: PlayLog[]) => ls.filter((l) => ['2B', '3B', 'HR'].includes(l.outcome)).length;
+  const bb = (ls: PlayLog[]) => ls.filter((l) => l.outcome === 'BB').length;
+  const k = (ls: PlayLog[]) => ls.filter((l) => l.outcome === 'K').length;
+
+  const rows = [
+    { label: 'RUNS', a: g.score.us, b: g.score.them },
+    { label: 'HITS', a: line.hitsUs, b: line.hitsThem },
+    { label: 'EXTRA-BASE HITS', a: xbh(us), b: xbh(them) },
+    { label: 'WALKS', a: bb(us), b: bb(them) },
+    { label: 'STRIKEOUTS', a: k(us), b: k(them) },
+    { label: 'ERRORS', a: line.errUs, b: line.errThem },
+  ];
+
+  return (
+    <div style={css('display:flex;flex-direction:column;gap:8px')}>
+      <SectionLabel>TEAM STATS</SectionLabel>
+      <div style={css('background:var(--card);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:13px')}>
+        {rows.map((r) => {
+          const mx = Math.max(r.a, r.b, 1);
+          return (
+            <div key={r.label} style={css('display:flex;flex-direction:column;gap:5px')}>
+              <div style={css('display:flex;align-items:baseline;gap:8px')}>
+                <span
+                  style={css(
+                    "font:700 14px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;min-width:30px",
+                  )}
+                >
+                  {r.a}
+                </span>
+                <span
+                  style={css(
+                    "flex-grow:1;text-align:center;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:var(--muted)",
+                  )}
+                >
+                  {r.label}
+                </span>
+                <span
+                  style={css(
+                    "font:700 14px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;min-width:30px;text-align:right",
+                  )}
+                >
+                  {r.b}
+                </span>
+              </div>
+              <div style={css('display:flex;gap:3px;height:7px;align-items:stretch')}>
+                <span style={css('flex:1 1 0;display:flex;justify-content:flex-end')}>
+                  <span
+                    style={cssx('border-radius:4px', {
+                      background: 'var(--data-a)',
+                      width: Math.round((r.a / mx) * 100) + '%',
+                    })}
+                  />
+                </span>
+                <span style={css('flex:1 1 0')}>
+                  <span
+                    style={cssx('display:block;height:100%;border-radius:4px', {
+                      background: 'var(--data-b)',
+                      width: Math.round((r.b / mx) * 100) + '%',
+                    })}
+                  />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={css('display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap')}>
+        <span>
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-a);vertical-align:-1px')} />{' '}
+          Chromies
+        </span>
+        <span>
+          <span style={css('display:inline-block;width:10px;height:10px;background:var(--data-b);vertical-align:-1px')} />{' '}
+          {g.opp}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The batting line for everyone who went to the plate, in order. */
+function BoxScore({
+  game: g,
+  pname,
+  pnum,
+}: {
+  game: Game;
+  pname: (id: string) => string;
+  pnum: (id: string) => string;
+}) {
+  const ids: string[] = [];
+  for (const l of g.log) {
+    if (l.manager || l.scoreOnly || !S.usLog(g, l)) continue;
+    if (!ids.includes(l.batter)) ids.push(l.batter);
+  }
+  if (!ids.length) return null;
+
+  const rows = ids.map((id) => ({ id, num: pnum(id), name: pname(id), s: S.batting([g], id) }));
+  const tot = rows.reduce(
+    (a, r) => ({
+      ab: a.ab + r.s.ab, r: a.r + r.s.r, h: a.h + r.s.h,
+      rbi: a.rbi + r.s.rbi, bb: a.bb + r.s.bb, k: a.k + r.s.k,
+    }),
+    { ab: 0, r: 0, h: 0, rbi: 0, bb: 0, k: 0 },
+  );
+
+  const head = "font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--muted2);padding:7px 4px;text-align:center";
+  const cell = "font:500 12px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;padding:7px 4px;text-align:center";
+
+  return (
+    <div style={css('display:flex;flex-direction:column;gap:8px')}>
+      <SectionLabel>BOX SCORE · CHROMIES</SectionLabel>
+      <div style={css('background:var(--card);border-radius:6px;overflow:hidden')}>
+        <table style={css('width:100%;border-collapse:collapse')}>
+          <thead>
+            <tr>
+              <th style={css(head + ';text-align:left;padding-left:12px')}>BATTER</th>
+              {['AB', 'R', 'H', 'RBI', 'BB', 'K'].map((h) => (
+                <th key={h} style={css(head)}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} style={css('border-top:1px solid var(--line)')}>
+                <td style={css(cell + ';text-align:left;padding-left:12px')}>
+                  <span style={css("font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:13px")}>
+                    {r.num} {r.name}
+                  </span>
+                </td>
+                <td style={css(cell)}>{r.s.ab}</td>
+                <td style={css(cell)}>{r.s.r}</td>
+                <td style={css(cell)}>{r.s.h}</td>
+                <td style={css(cell)}>{r.s.rbi}</td>
+                <td style={css(cell)}>{r.s.bb}</td>
+                <td style={css(cell)}>{r.s.k}</td>
+              </tr>
+            ))}
+            <tr style={css('border-top:1.5px solid var(--line-strong);background:var(--card2)')}>
+              <td style={css(cell + ';text-align:left;padding-left:12px;font-weight:700')}>TOTALS</td>
+              {[tot.ab, tot.r, tot.h, tot.rbi, tot.bb, tot.k].map((v, i) => (
+                <td key={i} style={css(cell + ';font-weight:700')}>{v}</td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
