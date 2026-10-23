@@ -140,6 +140,13 @@ Checked against `docs/screenshots/` at desktop width, in both themes.
   populated; they are marked `sample` and **Remove sample games** takes them out
   without touching real ones. The generator is deterministic (seeded, and independent
   of the date), so the same roster always produces the same games.
+- **Two looks ship, and the new one is the default.** `Manage → Look` switches
+  between *diamond* and *classic*; classic is the prototype styling kept whole.
+  The diamond design puts one large live diamond on the scoring screen carrying
+  the runners' jersey numbers, and reuses the same shape small for a season of
+  trips and a run of results. It also moved chart marks off brand amber, which
+  measures 1.45:1 against the light ground where the floor is 3:1. See
+  [docs/DESIGN.md](docs/DESIGN.md).
 - **Hit by pitch awards no base.** The handoff treated HBP like a walk — batter to
   first, runners forced, a run in from third with the bases loaded. This league does
   not play it that way: you wear one, you dust yourself off, and the at-bat carries

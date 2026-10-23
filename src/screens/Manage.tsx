@@ -398,6 +398,7 @@ function BadGuys({
 
 function Defaults({ data, save }: { data: ScorebookData; save: (d: ScorebookData) => void }) {
   const theme: Theme = data.settings.theme ?? 'light';
+  const design = data.settings.design ?? 'diamond';
   const setTheme = (t: Theme) => save({ ...data, settings: { ...data.settings, theme: t } });
   const row =
     'background:var(--card);border-radius:6px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap';
@@ -441,6 +442,37 @@ function Defaults({ data, save }: { data: ScorebookData; save: (d: ScorebookData
               )}
             >
               {m}m
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* The way back. If the new look is wrong at a field, this is the fix,
+          and it costs nothing: both designs read the same document. */}
+      <div style={css(row)}>
+        <div style={css('display:flex;flex-direction:column;gap:3px;max-width:260px')}>
+          <span style={css('font-size:14px;font-weight:500')}>Look</span>
+          <span style={css('font-size:12px;color:var(--muted);line-height:1.4')}>
+            Diamond puts the bases up large while you score and shows a season as
+            the trips each player took. Classic is the original.
+          </span>
+        </div>
+        <div style={css('display:grid;grid-template-columns:repeat(2,96px);gap:4px')}>
+          {(['diamond', 'classic'] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={design === d}
+              onClick={() => save({ ...data, settings: { ...data.settings, design: d } })}
+              style={cssx(
+                "min-height:40px;border:1.5px solid var(--line-strong);border-radius:4px;font:600 13px 'IBM Plex Sans',sans-serif;text-transform:capitalize",
+                {
+                  background: design === d ? '#111' : 'var(--card)',
+                  color: design === d ? '#fff' : 'var(--ink)',
+                },
+              )}
+            >
+              {d}
             </button>
           ))}
         </div>
