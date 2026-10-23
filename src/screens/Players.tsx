@@ -7,6 +7,8 @@ import { SprayField } from '../components/Field';
 import {
   BinderFrame, BinderLayout, BinderTabs, ContactBars, Modal, SectionLabel,
 } from '../components/ui';
+import { Mark, MarkLegend } from '../components/Diamond';
+import { plateMarks, timesRound } from '../lib/marks';
 import { wl } from '../components/ResultRow';
 import { useNav } from '../state/nav';
 import { useScorebook } from '../state/store';
@@ -86,7 +88,7 @@ function PlayerList() {
 }
 
 function PlayerCard({ player }: { player: Player }) {
-  const { data, fmtDate } = useScorebook();
+  const { data, fmtDate, design } = useScorebook();
   const nav = useNav();
 
   const finals = data.games.filter((g) => g.status === 'final');
@@ -94,6 +96,15 @@ function PlayerCard({ player }: { player: Player }) {
   const s = S.batting(ranged, player.id);
   const f = S.fielding(ranged, player.pos);
   const analysis = A.playerAnalysis(ranged, player, data.roster);
+
+  // Every trip to the plate, in order, as the scorebook's own shape.
+  const marks = plateMarks(ranged, player.id);
+  const round = timesRound(marks);
+  const roundRank =
+    data.roster
+      .map((p) => timesRound(plateMarks(ranged, p.id)))
+      .filter((v) => v > round).length + 1;
+  const everyNth = round ? Math.round(marks.length / round) : 0;
 
   const contactTotal = Object.values(s.contact).reduce((a, b) => a + b, 0) || 1;
   const stats = [
@@ -191,6 +202,55 @@ function PlayerCard({ player }: { player: Player }) {
                 </div>
               ))}
             </div>
+
+            {design === 'diamond' && marks.length > 0 && (
+              <div style={css('display:flex;flex-direction:column;gap:11px')}>
+                <div style={css('display:flex;justify-content:space-between;align-items:baseline')}>
+                  <SectionLabel>EVERY TRIP TO THE PLATE</SectionLabel>
+                  <span style={css("font:500 11px 'IBM Plex Mono',monospace;color:var(--muted3)")}>
+                    {marks.length}
+                  </span>
+                </div>
+
+                <div
+                  style={css(
+                    'display:grid;grid-template-columns:repeat(auto-fill,minmax(18px,1fr));gap:5px',
+                  )}
+                >
+                  {marks.map((m, i) => (
+                    <span
+                      key={i}
+                      style={css('display:flex;align-items:center;justify-content:center')}
+                    >
+                      <Mark kind={m} size={13} />
+                    </span>
+                  ))}
+                </div>
+
+                <MarkLegend kinds={['scored', 'reached', 'out']} />
+
+                {round > 0 && (
+                  <div style={css('display:flex;align-items:baseline;gap:12px;padding-top:4px')}>
+                    <span
+                      style={css(
+                        "font:700 38px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums",
+                      )}
+                    >
+                      {round}
+                    </span>
+                    <div style={css('display:flex;flex-direction:column;gap:2px')}>
+                      <span style={css("font:600 15px 'IBM Plex Sans',sans-serif")}>
+                        times round
+                      </span>
+                      <span style={css("font:400 13px 'IBM Plex Sans',sans-serif;color:var(--muted)")}>
+                        {ordinalWord(roundRank)} on the team
+                        {everyNth > 1 ? ` · one in every ${everyNth} trips` : ''}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={css('display:flex;flex-direction:column;gap:8px')}>
               <div style={css('display:flex;justify-content:space-between;align-items:baseline')}>
@@ -429,4 +489,13 @@ function GameCallModal({ game: g, player }: { game: Game; player: Player }) {
       </div>
     </Modal>
   );
+}
+
+/** "Fourth on the team" reads better than "4th" in a sentence. */
+function ordinalWord(n: number): string {
+  const words = [
+    '', 'Top', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh',
+    'Eighth', 'Ninth', 'Tenth',
+  ];
+  return words[n] ?? `${n}th`;
 }
