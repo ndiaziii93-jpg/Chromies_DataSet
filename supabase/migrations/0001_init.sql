@@ -11,8 +11,22 @@ create extension if not exists pgcrypto;
 create table if not exists team_settings (
   id              int primary key default 1 check (id = 1),
   time_limit_mins int  not null default 60,
-  theme           text not null default 'light' check (theme in ('light', 'dark'))
+  theme           text not null default 'light'   check (theme in ('light', 'dark')),
+  design          text not null default 'diamond' check (design in ('diamond', 'classic'))
 );
+
+-- For a project created before the design switch existed.
+alter table team_settings
+  add column if not exists design text not null default 'diamond';
+
+do $$
+begin
+  alter table team_settings
+    add constraint team_settings_design_check check (design in ('diamond', 'classic'));
+exception
+  when duplicate_object then null;
+end
+$$;
 
 -- The three passcode hashes, kept apart from the settings on purpose.
 --

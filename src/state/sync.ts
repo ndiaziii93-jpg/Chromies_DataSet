@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Game, OppBatter, Player, ScorebookData, Theme } from '../lib/types';
+import type { Design, Game, OppBatter, Player, ScorebookData, Theme } from '../lib/types';
 import { normalize, stripHistory } from './document';
 
 const QUEUE_KEY = 'chromies-sync-queue-v1';
@@ -10,7 +10,7 @@ type Op =
   | { t: 'gameDelete'; id: string }
   | { t: 'roster'; rows: Player[] }
   | { t: 'opp'; teamName: string; batters: OppBatter[] }
-  | { t: 'settings'; timeLimit: number; theme: Theme };
+  | { t: 'settings'; timeLimit: number; theme: Theme; design: Design };
 
 export type SyncState = 'off' | 'idle' | 'syncing' | 'queued' | 'error';
 
@@ -32,7 +32,7 @@ export async function pull(client: SupabaseClient, local: ScorebookData): Promis
   const [roster, opp, settings, games] = await Promise.all([
     client.from('roster').select('*').order('sort_order'),
     client.from('opp_lineup').select('*').maybeSingle(),
-    client.from('team_settings').select('id, time_limit_mins, theme').maybeSingle(),
+    client.from('team_settings').select('id, time_limit_mins, theme, design').maybeSingle(),
     client.from('games').select('id, doc'),
   ]);
 
@@ -52,8 +52,15 @@ export async function pull(client: SupabaseClient, local: ScorebookData): Promis
     next.oppLineup = ((opp.data as { batters: OppBatter[] }).batters ?? []) as OppBatter[];
   }
   if (!settings.error && settings.data) {
-    const s = settings.data as { time_limit_mins: number; theme: Theme };
-    next.settings = { timeLimit: s.time_limit_mins ?? 60, theme: s.theme ?? local.settings.theme };
+    const s = settings.data as { time_limit_mins: number; theme: Theme; design?: Design };
+    // Spread the local settings first: this replaced the whole object once, so
+    // any setting the server does not carry was wiped on every pull.
+    next.settings = {
+      ...local.settings,
+      timeLimit: s.time_limit_mins ?? 60,
+      theme: s.theme ?? local.settings.theme,
+      design: s.design ?? local.settings.design ?? 'diamond',
+    };
   }
   if (!games.error && games.data) {
     // Last write wins per game id: the server copy replaces the local one, and
@@ -98,7 +105,12 @@ export function diff(prev: ScorebookData | null, next: ScorebookData): Op[] {
     ops.push({ t: 'opp', teamName: next.oppTeam ?? '', batters: next.oppLineup });
   }
   if (!prev || JSON.stringify(prev.settings) !== JSON.stringify(next.settings)) {
-    ops.push({ t: 'settings', timeLimit: next.settings.timeLimit, theme: next.settings.theme ?? 'light' });
+    ops.push({
+      t: 'settings',
+      timeLimit: next.settings.timeLimit,
+      theme: next.settings.theme ?? 'light',
+      design: next.settings.design ?? 'diamond',
+    });
   }
   return ops;
 }
@@ -146,7 +158,7 @@ async function apply(client: SupabaseClient, op: Op): Promise<void> {
     case 'settings': {
       const { error } = await client
         .from('team_settings')
-        .update({ time_limit_mins: op.timeLimit, theme: op.theme })
+        .update({ time_limit_mins: op.timeLimit, theme: op.theme, design: op.design })
         .eq('id', 1);
       if (error) throw error;
       return;
