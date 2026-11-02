@@ -87,10 +87,18 @@ alter table games         enable row level security;
 -- Role claim
 -- ---------------------------------------------------------------------------
 
--- The login function mints a JWT carrying `app_role`. Everything below reads it.
+-- The role claim, read from either shape of token: the login edge function mints
+-- its own JWT with a top-level `app_role`, while Supabase Auth puts custom
+-- claims under `app_metadata`. The policies should not care which is in use.
 create or replace function app_role() returns text
   language sql stable
-  as $$ select coalesce(auth.jwt() ->> 'app_role', 'anon') $$;
+  as $$
+    select coalesce(
+      auth.jwt() ->> 'app_role',
+      auth.jwt() -> 'app_metadata' ->> 'app_role',
+      'anon'
+    )
+  $$;
 
 create or replace function is_signed_in() returns boolean
   language sql stable
