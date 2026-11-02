@@ -30,83 +30,55 @@ Open **SQL Editor**, paste all of [`supabase/migrations/0001_init.sql`](../supab
 and run it. That creates the tables, the row level security policies, and the
 `verify_passcode()` function.
 
-## 3. Set the three passcodes
+## 3. Create the three accounts
 
-The last block of that file is commented out. Uncomment it, replace the three
-strings, and run just that block:
+> **Why accounts and not an edge function.** The original design minted its own
+> JWT in a `login` function. That only works where a project signs tokens with
+> the legacy HS256 shared secret. This project signs with an **EC (P-256)** key
+> whose private half Supabase holds and never exposes, so a token we signed
+> ourselves would never verify — the approach is closed off, not merely harder.
+> Supabase Auth issues the token instead, correctly signed whatever the
+> algorithm, and the role travels in `app_metadata` where the policies read it.
+> Nobody types an email; the sign-in screen is unchanged.
 
-```sql
-insert into team_auth (id, manager_hash, scorer_hash, viewer_hash)
-values (
-  1,
-  crypt('your-manager-passcode', gen_salt('bf', 10)),
-  crypt('your-scorer-passcode',  gen_salt('bf', 10)),
-  crypt('your-viewer-passcode',  gen_salt('bf', 10))
-)
-on conflict (id) do update set
-  manager_hash = excluded.manager_hash,
-  scorer_hash  = excluded.scorer_hash,
-  viewer_hash  = excluded.viewer_hash;
-```
+**Authentication → Sign In / Providers → Email**
 
-Only the bcrypt hashes are stored. Re-run the same block any time to rotate a
-passcode — existing tokens stay valid until they expire (30 days), so rotate and
-then tell people to sign out if you need someone locked out sooner.
+- Turn **Confirm email** OFF. There is no inbox behind these addresses.
+- Turn **Allow new users to sign up** OFF. Three accounts is the whole list.
 
-Pick passcodes people can type on a phone at a field, but make them long enough to
-be worth having: three or four unrelated words beats a short cryptic string.
+**Authentication → Users → Add user → Create new user**, three times. Tick
+**Auto Confirm User** each time.
 
-## 4. Deploy the login function
-
-The function trades a passcode for a signed JWT carrying `app_role`. It has no
-imports — nothing to install, nothing to pin — so the browser editor is the easiest
-route and no CLI is required.
-
-**In the dashboard:** Edge Functions → **Deploy a new function** → name it exactly
-`login`. Replace the sample code with the contents of
-[`supabase/functions/login/index.ts`](../supabase/functions/login/index.ts) and deploy.
-
-Then turn off JWT verification for this one function: Edge Functions → `login` →
-Settings → **Enforce JWT verification: off**. That is correct here — this is the
-endpoint people call *before* they have a token, and everything it can do is bounded
-by the checks inside it.
-
-Now add the secret it needs: Edge Functions → **Secrets** (or Project Settings →
-Edge Functions → Secrets):
-
-| Name | Value |
+| Email | Password |
 |---|---|
-| `JWT_SECRET` | Project Settings → API → JWT Settings → **JWT Secret** (the legacy HS256 one) |
-| `ALLOWED_ORIGIN` | Your site's origin, e.g. `https://you.github.io` — scheme and host only, no path, no trailing slash. Optional; defaults to `*`. |
+| `manager@chromies.example.com` | your manager passcode |
+| `scorer@chromies.example.com` | your scorer passcode |
+| `viewer@chromies.example.com` | your viewer passcode |
 
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the platform — do not
-set them yourself, and never copy the service_role key anywhere else.
+The addresses must match exactly — they are the `ACCOUNTS` list in
+`src/state/supabase.ts`. `example.com` is reserved by RFC 2606 and cannot
+receive mail, which is the point: these are password records, not mailboxes.
 
-> If Project Settings → API shows only asymmetric **JWT signing keys** (ECC/RSA) and
-> no legacy HS256 secret, stop here and say so — the token has to be signed with
-> whatever your project verifies, and the function would need a different algorithm.
+Pick passcodes people can type on a phone at a field, but long enough to be
+worth having: three or four unrelated words beats a short cryptic string. They
+must differ from each other.
 
-**With the CLI instead**, if you prefer:
+## 4. Stamp the roles
 
-```bash
-npm install -g supabase
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase secrets set JWT_SECRET='<the project JWT secret>'
-supabase secrets set ALLOWED_ORIGIN='https://<you>.github.io'
-supabase functions deploy login --no-verify-jwt
-```
+Paste [`supabase/auth_roles.sql`](../supabase/auth_roles.sql) into the SQL
+editor and run it. It writes `app_role` into each account's `app_metadata`.
 
-Either way, check it:
+Order matters: `app_metadata` is copied into the access token **when the token
+is issued**, so run this before anyone signs in. If someone already has a
+session, they sign out and back in to pick the role up.
 
-```bash
-curl -s -X POST "https://<ref>.supabase.co/functions/v1/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"passcode":"your-viewer-passcode"}'
-# => {"token":"eyJ...","role":"viewer"}
-```
+The check at the end should print three rows, each with a role and each
+confirmed. An account with a blank role will be refused at sign-in with a
+message saying so, rather than appearing to work and then failing every read.
 
-A wrong passcode should give `{"error":"Invalid passcode."}` and a 401.
+There is **no edge function, no `JWT_SECRET` and no `ALLOWED_ORIGIN`** in this
+design. Supabase's own endpoints already send the right CORS headers, and
+rate-limiting on failed sign-ins is theirs rather than hand-rolled.
 
 ## 5. Point the app at it
 
@@ -133,10 +105,12 @@ the season. The first save pushes everything up.
 
 ## How the pieces fit
 
-**Auth.** No Supabase user accounts and no email. `login` checks the passcode against
-three bcrypt hashes and mints a JWT with `role: authenticated` (which PostgREST
-requires) and `app_role: manager | scorer | viewer` (which the policies read). The
-client stores that token and sends it as a bearer header on every request.
+**Auth.** Three Supabase Auth accounts, one per role, whose passwords are the three
+passcodes. Nobody types an email: the sign-in screen takes a passcode and the client
+tries each account in turn, highest role first. Supabase issues the access token,
+signed with the project's own key, carrying `app_role` in `app_metadata`; the client
+holds that session and refreshes it in the background, which matters because a game
+runs longer than an access token lives.
 
 **Where the hashes live.** In `team_auth`, which has RLS enabled and deliberately no
 policies — so it is unreachable with the anon key regardless of what a token claims.
@@ -170,18 +144,28 @@ a game is not a goal — viewers seeing the result after "End game" is the requi
 
 ## Troubleshooting
 
-**Sign-in says it can't reach the server.** Almost always CORS. Check
-`ALLOWED_ORIGIN` matches the site's origin exactly — scheme and host, no trailing
-slash and no path. `https://you.github.io`, not `https://you.github.io/Chromies_DataSet/`.
+**"That account has no role set."** The password matched but `app_metadata` is
+empty, so the policies would refuse everything. Run step 4, then sign out and
+back in — the role is baked into the token at issue time.
 
-**Sign-in works, but the app shows no data.** The token is fine and RLS is rejecting
-reads, which means the `app_role` claim isn't arriving. Paste the token into
-[jwt.io](https://jwt.io) and confirm it carries both `role: "authenticated"` and
-`app_role`. If `role` is missing, PostgREST rejects the token outright.
+**"That passcode doesn't match."** All three accounts refused it. Check the
+passcode, and check the three addresses in Authentication → Users match the
+table in step 3 character for character.
+
+**Sign-in works, but the app shows no data.** The token is fine and RLS is
+rejecting reads, which means `app_role` is not arriving. Paste the token into
+[jwt.io](https://jwt.io) and confirm it carries `app_metadata.app_role`. If it
+does, confirm `0003_role_claim_either_shape.sql` has been run — without it
+`app_role()` only looks at a top-level claim, which Supabase Auth does not set.
 
 **Writes silently do nothing.** The top bar shows `SYNC RETRYING` when a push is
 failing; hover it for the error. A scorer trying to change a finished game is the
-expected case — that's the RLS policy doing its job.
+expected case — that is the RLS policy doing its job.
 
-**The status never leaves `QUEUED`.** The queue only flushes when the browser reports
-itself online *and* a client exists. Reload; the queue is persisted and retries.
+**The status never leaves `QUEUED`.** The queue only flushes when the browser
+reports itself online *and* a client exists. Reload; the queue is persisted and
+retries.
+
+**Signed out unexpectedly after a long gap.** The refresh token eventually
+expires. Sign in again; nothing is lost, because the local cache is the working
+copy and syncs up on reconnect.

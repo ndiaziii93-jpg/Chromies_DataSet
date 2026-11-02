@@ -6,7 +6,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Design, Game, ScorebookData, Theme } from '../lib/types';
 import { freshData, loadLocal, saveLocal } from './document';
 import { applyTheme } from './theme';
-import { clientFor, isConfigured, readSession, writeSession, type Role, type Session } from './supabase';
+import {
+  clientFor, endSession, isConfigured, readSession, writeSession,
+  type Role, type Session,
+} from './supabase';
 import { Syncer, diff, pull, type SyncState } from './sync';
 
 interface Store {
@@ -179,6 +182,9 @@ export function ScorebookProvider({
 
   const signOut = useCallback(() => {
     writeSession(null);
+    // Ends the Supabase session too, otherwise the refresh token outlives the
+    // sign-out and the next person to pick up the phone is still signed in.
+    void endSession();
     onSignOut();
   }, [onSignOut]);
 

@@ -27,7 +27,7 @@ src/
   state/         the scorebook document, theme, roles, sync, navigation
   components/    wordmark, the diamond, binder tabs, shared chrome
   screens/       Today · Live · Games · Players · Trends · Manage · SignIn
-supabase/        migration SQL and the passcode login edge function
+supabase/        migration SQL and the Supabase Auth role setup
 docs/            SUPABASE_SETUP.md, DEPLOY.md, and the reference screenshots
 ```
 
@@ -169,17 +169,18 @@ Checked against `docs/screenshots/` at desktop width, in both themes.
 
 Two places where following the handoff literally would have shipped a defect:
 
-1. **Passcode hashes are in their own table.** The handoff put `manager_hash`,
-   `scorer_hash` and `viewer_hash` on `team_settings` and gave every signed-in role
-   `SELECT` on it, which would let any viewer read the manager hash and attack it
-   offline. They now live in `team_auth`, which has RLS on and **no policies**, so it
-   is unreachable with the anon key; only the service_role key inside the login
-   function can read it, and the bcrypt comparison runs inside Postgres via a
-   `SECURITY DEFINER` function so the hashes never leave the database.
+1. **Passcode hashes are never readable by a signed-in user.** The handoff put
+   `manager_hash`, `scorer_hash` and `viewer_hash` on `team_settings` and gave every
+   signed-in role `SELECT` on it, which would let any viewer read the manager hash
+   and attack it offline. The shipped design keeps no hash the client can reach at
+   all: the three passcodes are the passwords of three Supabase Auth accounts, so the
+   hashing, the comparison and the rate-limiting are Supabase's.
 2. **Per-command policies on `games`.** The handoff's single `FOR ALL` policy would
    have let a scorer delete games. Insert/update are scoped to scorers (and only
    while `status = 'in_progress'`); delete is manager-only.
 
-The login edge function also handles CORS preflight — without it the browser call
-fails — and rate-limits attempts per IP, since a short passcode on a public endpoint
-is worth making expensive to guess.
+The handoff's `login` edge function was built and then removed: it minted its own
+HS256 JWT, which only verifies on a project using the legacy shared secret. This
+project signs with an EC key Supabase never exposes, so the function could not have
+worked. Supabase Auth issues the token instead and `app_role()` reads the role from
+`app_metadata`. See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
